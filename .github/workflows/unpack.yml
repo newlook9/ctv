@@ -1,0 +1,64 @@
+name: Unpack zip
+
+on:
+  push:
+    paths:
+      - 'upload/*.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack zip into the repository
+        id: unpack
+        run: |
+          set -e
+          shopt -s nullglob
+          zips=(upload/*.zip)
+          if [ ${#zips[@]} -eq 0 ]; then
+            echo "No zip found"
+            exit 0
+          fi
+          rm -rf /tmp/unz
+          mkdir /tmp/unz
+          unzip -q -o "${zips[0]}" -d /tmp/unz
+          src=/tmp/unz
+          count=$(ls -A /tmp/unz | wc -l)
+          first=$(ls -A /tmp/unz | head -n 1)
+          if [ "$count" -eq 1 ] && [ -d "/tmp/unz/$first" ]; then
+            src="/tmp/unz/$first"
+          fi
+          rm -rf "$src/.github"
+          cp -a "$src"/. .
+          rm -f upload/*.zip
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          changes=$(git diff --cached --name-only)
+          if echo "$changes" | grep -qE '^(app/|build.gradle.kts|settings.gradle.kts|gradle.properties)'; then
+            echo "android=true" >> "$GITHUB_OUTPUT"
+          fi
+          if echo "$changes" | grep -q '^desktop/'; then
+            echo "desktop=true" >> "$GITHUB_OUTPUT"
+          fi
+          git commit -m "Unpacked zip" || echo "Nothing to commit"
+          git push
+
+      - name: Start the Android build
+        if: steps.unpack.outputs.android == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build.yml || true
+
+      - name: Start the Windows build
+        if: steps.unpack.outputs.desktop == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run desktop.yml || true
