@@ -1,6 +1,6 @@
 {
   "name": "livetv-desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Live TV and Radio for Windows",
   "author": "LiveTV",
   "main": "main.js",
@@ -16,11 +16,26 @@
   "build": {
     "appId": "com.livetv.desktop",
     "productName": "Live TV",
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["main.js", "preload.js", "renderer/**/*", "package.json"],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ],
     "artifactName": "LiveTV-Setup-${version}.exe",
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.png"
     },
     "nsis": {
@@ -30,6 +45,12 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Live TV"
-    }
+    },
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**/*"
+    ]
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0"
   }
 }
