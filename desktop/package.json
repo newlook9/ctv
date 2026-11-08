@@ -24,6 +24,7 @@
       "main.js",
       "preload.js",
       "renderer/**/*",
+      "build/icon.png",
       "package.json"
     ],
     "artifactName": "LiveTV-Setup-${version}.exe",

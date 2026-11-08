@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, Tray, nativeImage, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -11,7 +11,8 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+// Media keys are handled by this program itself (see below), so the browser must not also react to them.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,HardwareMediaKeyHandling');
 app.setAppUserModelId('com.livetv.desktop');
 
 if (!app.requestSingleInstanceLock()) {
@@ -20,6 +21,36 @@ if (!app.requestSingleInstanceLock()) {
 
 let win = null;
 let rec = null;
+let tray = null;
+let quitting = false;
+let playerState = { playing: false, audio: false };
+let labels = { show: 'Show Live TV', toggle: 'Play / Pause', quit: 'Quit' };
+
+function send(channel) {
+  if (win && !win.isDestroyed()) win.webContents.send(channel);
+}
+function showWin() {
+  if (!win) { createWindow(); return; }
+  win.show();
+  if (win.isMinimized()) win.restore();
+  win.focus();
+}
+function trayMenu() {
+  return Menu.buildFromTemplate([
+    { label: labels.show, click: showWin },
+    { label: labels.toggle, click: () => send('media:toggle') },
+    { type: 'separator' },
+    { label: labels.quit, click: () => { quitting = true; app.quit(); } }
+  ]);
+}
+function ensureTray() {
+  if (tray) { tray.setContextMenu(trayMenu()); return; }
+  const img = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png'));
+  tray = new Tray(img.resize({ width: 16, height: 16 }));
+  tray.setToolTip('Live TV');
+  tray.on('click', showWin);
+  tray.setContextMenu(trayMenu());
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -51,6 +82,14 @@ function createWindow() {
     if (input.type === 'keyDown' && input.key === 'F11') {
       win.setFullScreen(!win.isFullScreen());
       event.preventDefault();
+    }
+  });
+  // Closing the window while a radio station is playing keeps the sound going from the tray.
+  win.on('close', (e) => {
+    if (!quitting && playerState.playing && playerState.audio) {
+      e.preventDefault();
+      win.hide();
+      ensureTray();
     }
   });
   win.on('closed', () => { win = null; });
@@ -151,16 +190,38 @@ ipcMain.handle('rec:open', () => {
   return shell.openPath(dir);
 });
 
-app.on('second-instance', () => {
-  if (win) {
-    if (win.isMinimized()) win.restore();
-    win.focus();
+app.on('second-instance', showWin);
+
+ipcMain.on('player:state', (event, s) => {
+  if (s) playerState = { playing: !!s.playing, audio: !!s.audio };
+});
+ipcMain.on('tray:labels', (event, l) => {
+  if (l) {
+    labels = { show: String(l.show || labels.show), toggle: String(l.toggle || labels.toggle), quit: String(l.quit || labels.quit) };
+    if (tray) tray.setContextMenu(trayMenu());
   }
 });
+ipcMain.handle('app:version', () => app.getVersion());
+ipcMain.handle('app:open', (event, url) => {
+  if (typeof url === 'string' && /^https:\/\/(github\.com|api\.github\.com|objects\.githubusercontent\.com)\//.test(url)) {
+    shell.openExternal(url);
+    return true;
+  }
+  return false;
+});
 
-app.on('before-quit', () => { if (rec) stopRec(); });
+app.on('before-quit', () => {
+  quitting = true;
+  if (rec) stopRec();
+});
+app.on('will-quit', () => { globalShortcut.unregisterAll(); });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  [['MediaPlayPause', 'toggle'], ['MediaNextTrack', 'next'], ['MediaPreviousTrack', 'prev']].forEach((k) => {
+    try { globalShortcut.register(k[0], () => send('media:' + k[1])); } catch (e) {}
+  });
+});
 
 app.on('window-all-closed', () => {
   app.quit();

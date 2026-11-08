@@ -1,18 +1,11 @@
 # Live TV for Windows (desktop)
 
-Part 1 - DONE
-- Windows installer (.exe) built on GitHub (workflow: Build Desktop)
-- TV and Radio: country / category / world, searchable lists, favorites, recent, own files
-- Browser limits removed so many more channels play than in a normal browser
-- Real channel scan, Working only / hide non-working, sort, radio card, quality, sleep timer, parental lock, backup
+Part 1 - DONE: installer, TV and Radio, lists, scan, favorites, own files, themes, parental lock, backup
+Part 2 - DONE: smoother video, MP4 recording (ffmpeg), playlists, remembered own files, drag and drop
+Part 3 (this zip) - DONE
+- 11 languages (English, Urdu, Arabic, Hindi, Bengali, Persian, Turkish, French, Spanish, Russian, Indonesian), right-to-left for Urdu / Arabic / Persian
+- Update check (once a day, and Settings > Check for updates) using the GitHub release made by the Build Desktop workflow
+- Tray: closing the window while a radio station plays keeps it playing; tray menu has Show / Play-Pause / Quit
+- Keyboard media keys (play/pause, next, previous) work even when the window is hidden
 
-Part 2 (this zip) - DONE
-- Smoother video: bigger buffer, further behind the live edge, calmer quality changes,
-  quality follows the window size, graphics-card flags, "Smooth mode", "Playback info"
-- Recording straight to MP4 (radio to MP3) with ffmpeg, "Record for..." timer, open recordings folder
-- Lists tab: playlists (create, rename, delete, reorder, add from any channel)
-- Own files are remembered (and can be dropped onto the window)
-- Text boxes inside the page (PIN, playlist name) - no more browser popups
-
-Part 3 - TO DO
-- All 11 languages, update check, tray (radio keeps playing when the window is closed)
+Needs the new desktop.yml workflow (it sets the version and publishes the release).
