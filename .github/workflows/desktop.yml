@@ -3,6 +3,9 @@ name: Build Desktop
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -19,6 +22,9 @@ jobs:
       - name: Install tools
         run: npm install
 
+      - name: Set version from the build number
+        run: npm version 1.1.${{ github.run_number }} --no-git-tag-version --allow-same-version
+
       - name: Copy video engine
         run: node scripts/copy-hls.js
 
@@ -31,3 +37,10 @@ jobs:
         with:
           name: LiveTV-Windows-Installer
           path: desktop/dist/*.exe
+
+      - name: Publish release for in-app update check
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-${{ github.run_number }}
+          name: Live TV Desktop ${{ github.run_number }}
+          files: desktop/dist/*.exe
